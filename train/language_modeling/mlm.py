@@ -48,6 +48,7 @@ def main(params: argparse.Namespace):
         num_train_epochs=params.num_train_epochs,
         per_device_train_batch_size=params.batch_size,
         per_device_eval_batch_size=params.batch_size,
+        save_strategy=IntervalStrategy.EPOCH,
         evaluation_strategy=IntervalStrategy.EPOCH,
         eval_steps=params.save_steps,
         save_steps=params.save_steps,
