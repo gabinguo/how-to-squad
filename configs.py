@@ -12,3 +12,6 @@ _kgqa_squad_json: str = "kgqa_2000.json"
 _squad_json: str = "train-v1.1.json"
 _size: int = 2000
 _n_fold: int = 5
+
+# language modeling
+_min_word_number_per_line: int = 8

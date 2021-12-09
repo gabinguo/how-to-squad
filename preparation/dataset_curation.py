@@ -14,7 +14,8 @@ import datasets
 
 from utils.log import setup_logger, log_map
 from utils.tool_funcs import overlap
-from configs import _seed, _size, _n_fold, _dataset_store, _movieqa_squad_json, _kgqa_squad_json, _squad_json
+from configs import _seed, _size, _n_fold, _dataset_store, _movieqa_squad_json, _kgqa_squad_json, _squad_json, \
+    _min_word_number_per_line
 
 random.seed(_seed)
 
@@ -236,6 +237,23 @@ def merge_finetuning_preparation():
                                           f"mwo-factor-{factor}-fold-{fold + 1}-train.json"))
 
 
+def language_modeling_preparation():
+    for ds_name in ds_names:
+        logger.info(f"Preparing MLM dataset for {ds_name}")
+        train = read_jsonlines(os.path.join(_dataset_store, ds_name, f"budget-{max_budget_size}", "fold-1-train.json"))
+        test = read_jsonlines(os.path.join(_dataset_store, ds_name, f"budget-{max_budget_size}", "fold-1-test.json"))
+        entire_ds = train + test
+        df = pd.DataFrame.from_records(entire_ds)
+        contexts = df["context"].tolist()
+        with open(os.path.join(_dataset_store, ds_name, f"{ds_name}_in_lines.txt"), 'w') as f:
+            for context in contexts:
+                sentences = nltk.sent_tokenize(context)
+                for sentence in sentences:
+                    if len(sentence.split()) >= _min_word_number_per_line:
+                        f.write(sentence.strip())
+                        f.write("\n")
+
+
 if __name__ == '__main__':
     # settings
     oversample_factors = [1, 3]
@@ -247,13 +265,15 @@ if __name__ == '__main__':
         squad_curation,
         store_datasets_in_folds,
         simulate_budgets,
-        merge_finetuning_preparation
+        merge_finetuning_preparation,
+        language_modeling_preparation
     ]
     task_names = [
         "1. Caching SQuAD Dataset: ",
         "2. Preparing 5-fold for 4 datasets and store to disk: ",
         "3. Sampling from 5-fold and create budget training splits: ",
-        "4. Preparing for merge fine-tuning (MP, MW, MPO, MWO): "
+        "4. Preparing for merge fine-tuning (MP, MW, MPO, MWO): ",
+        "5. Preparing for MLM task: "
     ]
     assert len(tasks) == len(task_names)
 
@@ -262,4 +282,4 @@ if __name__ == '__main__':
     for do_task, task_name in pbar:
         log_map(logger, "Status", {"Task": task_name})
         do_task()
-    log_map(logger, "Status", {"-": "Done."})
+    log_map(logger, "Status", {"-": "All Done :)"})
