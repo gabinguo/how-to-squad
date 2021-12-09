@@ -262,3 +262,4 @@ if __name__ == '__main__':
     for do_task, task_name in pbar:
         log_map(logger, "Status", {"Task": task_name})
         do_task()
+    log_map(logger, "Status", {"-": "Done."})
