@@ -16,6 +16,7 @@ from utils.log import setup_logger, log_map
 from utils.tool_funcs import overlap
 from configs import _seed, _size, _n_fold, _dataset_store, _movieqa_squad_json, _kgqa_squad_json, _squad_json, \
     _min_word_number_per_line
+import re
 
 random.seed(_seed)
 
@@ -52,8 +53,9 @@ def squad_json_to_dataset(filename: str):
     """
     with open(filename) as f:
         data = json.load(f)["data"]
-    questions, answers, contexts = [], [], []
+    questions, answers, contexts, ids = [], [], [], []
     for idx, d in enumerate(data):
+        ids.append(f"data-id-{idx + 1}")
         for para in d["paragraphs"]:
             contexts.append(para["context"])
             for qa in para["qas"]:
@@ -93,7 +95,9 @@ def squad_curation():
     _dataset_name = "squad"
     logger.info(f"Prepare the {_dataset_name} dataset")
     squad_v1 = load_dataset(_dataset_name, split="train").shuffle(seed=_seed)
-    squad_v1.remove_columns(["id", 'title']).to_json(os.path.join(_dataset_store, "squad_v1.json"))
+    squad_v1_val = load_dataset(_dataset_name, split="validation").shuffle(seed=_seed)
+    squad_v1.to_json(os.path.join(_dataset_store, "squad_v1.json"))
+    squad_v1_val.to_json(os.path.join(_dataset_store, "squad_v1_eval.json"))
 
 
 def covidqa_curation():
@@ -101,11 +105,17 @@ def covidqa_curation():
         covidqa doesn't contain the dev/test set.  => 5-fold cross-validation
     :return:
     """
+
+    def convert_id_to_str(example):
+        example["id"] = f"data-id-{example['id']}"
+        return example
+
     _dataset_name = "covid_qa_deepset"
     logger.info(f"Prepare the {_dataset_name} dataset")
     covidqa = load_dataset(_dataset_name, split="train").shuffle(seed=_seed)
     covidqa_subset = covidqa.select([i for i in range(_size)])
-    return _k_folds(covidqa_subset.remove_columns(["document_id", "is_impossible", "id"]))
+    covidqa_subset = covidqa_subset.map(convert_id_to_str)
+    return _k_folds(covidqa_subset.remove_columns(["document_id", "is_impossible"]))
 
 
 def cuadqa_curation():
@@ -130,7 +140,7 @@ def cuadqa_curation():
         # contain question wh-, how, ... and must be answerable
         lambda example: is_question(example["question"]) and has_answer(example["answers"])
     ).select([i for i in range(_size)])
-    return _k_folds(cuadqa_subset.remove_columns(["id", "title"]))
+    return _k_folds(cuadqa_subset.remove_columns(["title"]))
 
 
 def movieqa_curation():
@@ -211,7 +221,7 @@ def simulate_budgets():
 
 def merge_finetuning_preparation():
     squad_whole = read_jsonlines(os.path.join(_dataset_store, "squad_v1.json"))
-    for ds_name in ds_names:
+    for ds_name in tqdm(ds_names, desc="Merge Fine-tune Preparation: "):
         for budget in budgets:
             squad_subset = random.Random(_seed).sample(squad_whole, budget)
             for fold in range(_n_fold):
@@ -238,6 +248,17 @@ def merge_finetuning_preparation():
 
 
 def language_modeling_preparation():
+    from commonregex import email, time, date, credit_card, street_address, link
+
+    def clean_private_info(text):
+        text = re.sub(email, "", text)
+        text = re.sub(time, "", text)
+        text = re.sub(date, "", text)
+        text = re.sub(credit_card, "", text)
+        text = re.sub(street_address, "", text)
+        text = re.sub(link, "", text)
+        return text
+
     for ds_name in ds_names:
         logger.info(f"Preparing MLM dataset for {ds_name}")
         train = read_jsonlines(os.path.join(_dataset_store, ds_name, f"budget-{max_budget_size}", "fold-1-train.json"))
@@ -247,10 +268,11 @@ def language_modeling_preparation():
         contexts = df["context"].tolist()
         with open(os.path.join(_dataset_store, ds_name, f"{ds_name}_in_lines.txt"), 'w') as f:
             for context in contexts:
+                context = clean_private_info(context)
                 sentences = nltk.sent_tokenize(context)
                 for sentence in sentences:
-                    if len(sentence.split()) >= _min_word_number_per_line:
-                        f.write(sentence.strip())
+                    if len(sentence.strip().split()) >= _min_word_number_per_line:
+                        f.write(sentence.replace("\n", " ").strip())
                         f.write("\n")
 
 
@@ -262,14 +284,14 @@ if __name__ == '__main__':
     ds_names = ["COVIDQA", "MOVIEQA", "CUADQA", "KGQA"]
 
     tasks = [
-        squad_curation,
+        # squad_curation,
         store_datasets_in_folds,
         simulate_budgets,
         merge_finetuning_preparation,
         language_modeling_preparation
     ]
     task_names = [
-        "1. Caching SQuAD Dataset: ",
+        # "1. Caching SQuAD Dataset: ",
         "2. Preparing 5-fold for 4 datasets and store to disk: ",
         "3. Sampling from 5-fold and create budget training splits: ",
         "4. Preparing for merge fine-tuning (MP, MW, MPO, MWO): ",
