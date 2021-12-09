@@ -13,6 +13,7 @@
     ```bash
     pip3 install transformers==4.12.5
     pip3 install datasets==1.16.1
+    pip3 install commonregex
     pip3 install nltk
      ```
 
