@@ -284,14 +284,14 @@ if __name__ == '__main__':
     ds_names = ["COVIDQA", "MOVIEQA", "CUADQA", "KGQA"]
 
     tasks = [
-        # squad_curation,
+        squad_curation,
         store_datasets_in_folds,
         simulate_budgets,
         merge_finetuning_preparation,
         language_modeling_preparation
     ]
     task_names = [
-        # "1. Caching SQuAD Dataset: ",
+        "1. Caching SQuAD Dataset: ",
         "2. Preparing 5-fold for 4 datasets and store to disk: ",
         "3. Sampling from 5-fold and create budget training splits: ",
         "4. Preparing for merge fine-tuning (MP, MW, MPO, MWO): ",
