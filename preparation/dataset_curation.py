@@ -60,6 +60,7 @@ def squad_json_to_dataset(filename: str):
                     "answer_start": [qa["answers"][0]["answer_start"]]
                 })
     df = pd.DataFrame({
+        "id": ids,
         "question": questions,
         "context": contexts,
         "answers": answers,

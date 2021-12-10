@@ -27,13 +27,10 @@ def train_model(params):
     num_epochs = params.num_epochs
     max_seq_len = params.max_seq_len
     doc_stride = params.doc_stride
-    use_gpu = params.use_gpu
     output_dir = params.output_dir
     weight_decay = params.weight_decay
     model_ckpt = params.model_ckpt
     lr = params.lr
-
-    device = torch.device("cuda") if use_gpu and torch.cuda.is_available() else torch.device("cpu")
 
     tokenizer = AutoTokenizer.from_pretrained(model_ckpt, use_fast=True)
     model = AutoModelForQuestionAnswering.from_pretrained(model_ckpt)
