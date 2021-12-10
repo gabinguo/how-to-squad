@@ -18,11 +18,6 @@ from configs import _seed, _size, _n_fold, _dataset_store, _movieqa_squad_json, 
     _min_word_number_per_line
 import re
 
-random.seed(_seed)
-
-# disable globally the tqdm inside datasets loading
-datasets.set_progress_bar_enabled(False)
-
 logger = logging.getLogger(__name__)
 setup_logger(logger)
 
@@ -277,6 +272,9 @@ def language_modeling_preparation():
 
 
 if __name__ == '__main__':
+    random.seed(_seed)
+    # disable globally the tqdm inside datasets loading
+    datasets.set_progress_bar_enabled(False)
     # settings
     oversample_factors = [1, 3]
     budgets = [100, 200, 400, 800, 1200]

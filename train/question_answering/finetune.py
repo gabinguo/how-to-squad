@@ -5,7 +5,7 @@ import os.path
 
 from preparation.dataset_processing import prepare_train_features, prepare_validation_features, \
     postprocess_qa_predictions
-from preparation.dataset_curation import convert_jsonlines_to_dataset
+from preparation.dataset_curation import convert_jsonlines_to_dataset, write_jsonlines
 from transformers import AutoTokenizer, AutoModelForQuestionAnswering
 from transformers import TrainingArguments, Trainer, IntervalStrategy
 from transformers import default_data_collator
@@ -35,15 +35,11 @@ def train_model(params):
 
     device = torch.device("cuda") if use_gpu and torch.cuda.is_available() else torch.device("cpu")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_ckpt)
+    tokenizer = AutoTokenizer.from_pretrained(model_ckpt, use_fast=True)
     model = AutoModelForQuestionAnswering.from_pretrained(model_ckpt)
-    train_features = dataset_dict["train"].map(
+    tokenized_ds = dataset_dict.map(
         lambda examples: prepare_train_features(examples, tokenizer, max_seq_len, doc_stride), batched=True,
         remove_columns=dataset_dict["train"].column_names, desc="Tokenization (Train): "
-    )
-    test_features = dataset_dict["test"].map(
-        lambda examples: prepare_validation_features(examples, tokenizer, max_seq_len, doc_stride), batched=True,
-        remove_columns=dataset_dict["test"].column_names, desc="Tokenization (Test): "
     )
     if num_gpus > 1:
         model = torch.nn.DataParallel(model, device_ids=[index for index in range(num_gpus)]).cuda()
@@ -55,6 +51,7 @@ def train_model(params):
         do_train=True,
         do_eval=False,
         evaluation_strategy=IntervalStrategy.NO,
+        save_strategy=IntervalStrategy.NO,
         learning_rate=lr,
         per_device_train_batch_size=batch_size,
         num_train_epochs=num_epochs,
@@ -63,15 +60,22 @@ def train_model(params):
     trainer = Trainer(
         model,
         training_args,
-        train_dataset=train_features,
-        eval_dataset=None,
+        train_dataset=tokenized_ds["train"],
+        eval_dataset=tokenized_ds["test"],
         data_collator=data_collator,
         tokenizer=tokenizer,
     )
     trainer.train()
     trainer.save_model(output_dir)
 
+    logger.info("Training finished.")
+
     # evaluation
+    logger.info("Start evaluating on the test file... ")
+    test_features = dataset_dict["test"].map(
+        lambda examples: prepare_validation_features(examples, tokenizer, max_seq_len, doc_stride), batched=True,
+        remove_columns=dataset_dict["test"].column_names, desc="Tokenization (Test): "
+    )
     raw_predictions = trainer.predict(test_features)
     test_features.set_format(type=test_features.format["type"], columns=list(test_features.features.keys()))
     final_predictions = postprocess_qa_predictions(tokenizer, dataset_dict["test"], test_features,
@@ -80,9 +84,15 @@ def train_model(params):
     formatted_predictions = [{"id": k, "prediction_text": v} for k, v in final_predictions.items()]
     references = [{"id": ex["id"], "answers": ex["answers"]} for ex in dataset_dict["test"]]
     result = metric.compute(predictions=formatted_predictions, references=references)
+    logger.info("Evaluation finished.")
+    log_map(logger, "EM & F1", result)
+
+    logger.info("Save the results to disk")
     # write result to file for records
-    with open(os.path.join(output_dir, "eval_result.json"), 'w') as f:
-        json.dump(result, f)
+    write_jsonlines(formatted_predictions, os.path.join(output_dir, "predictions.json"))
+    write_jsonlines([result], os.path.join(output_dir, "eval_metrics.json"))
+
+    log_map(logger, "Status", {"-": "All Done :)"})
 
 
 if __name__ == '__main__':

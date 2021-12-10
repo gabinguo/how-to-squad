@@ -145,7 +145,7 @@ def postprocess_qa_predictions(tokenizer, examples, features, raw_predictions, n
     predictions = collections.OrderedDict()
 
     # Logging.
-    print(f"Post-processing {len(examples)} example predictions split into {len(features)} features.")
+    logger.info(f"Post-processing {len(examples)} example predictions split into {len(features)} features.")
 
     # Let's loop over all the examples!
     for example_index, example in enumerate(tqdm(examples)):
@@ -206,3 +206,4 @@ def postprocess_qa_predictions(tokenizer, examples, features, raw_predictions, n
             best_answer = {"text": "", "score": 0.0}
 
         predictions[example["id"]] = best_answer["text"]
+    return predictions
