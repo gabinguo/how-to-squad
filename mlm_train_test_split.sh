@@ -2,6 +2,7 @@
 
 # Usage
 # ./mlm_train_test_split.sh abc.txt 80 20
+# => Generate two files: 80% in train-[filename] and 20% in test-[filename]
 
 file="$1"
 fileLength=$(wc -l < "$file")
