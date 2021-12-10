@@ -41,10 +41,6 @@ def train_model(params):
         lambda examples: prepare_train_features(examples, tokenizer, max_seq_len, doc_stride), batched=True,
         remove_columns=dataset_dict["train"].column_names, desc="Tokenization (Train): "
     )
-    if num_gpus > 1:
-        model = torch.nn.DataParallel(model, device_ids=[index for index in range(num_gpus)]).cuda()
-    elif use_gpu:
-        model.to(device)
 
     training_args = TrainingArguments(
         output_dir,
