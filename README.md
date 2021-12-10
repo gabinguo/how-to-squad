@@ -42,13 +42,13 @@ python3 -m train.language_modeling.mlm \
             --num_train_epochs 15
 ```
 
-### 🛠 Fine-tune a model on QA datasets
+### 🛠 Fine-tune a extractive qa model on QA datasets
 
 ```bash
 export TRAIN_FILE=""
 export TEST_FILE=""
 export OUTPUT_DIR=""
-python3 -m train.question_answering.finetune \
+python3 -m train.question_answering.extractive.finetune \
 		   --train_file $TRAIN_FILE \
 		   --test_file $TEST_FILE \
 		   --model_ckpt roberta-base \
@@ -57,6 +57,10 @@ python3 -m train.question_answering.finetune \
 		   --num_epochs 2 \
 		   --lr 2e-5
 ```
+
+### 🛠 Fine-tune a generative qa model on QA datasets
+
+### 🛠 Fine-tune a prompt-style qa model on QA datasets
 
 [1]: https://pytorch.org/get-started/locally/
 
