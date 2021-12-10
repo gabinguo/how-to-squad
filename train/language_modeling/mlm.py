@@ -76,6 +76,8 @@ def main(params: argparse.Namespace):
     trainer.save_model(params.output_folder)
     tokenizer.save_pretrained(params.output_folder)
 
+    log_map(logger, "Status", {"-": "All Done :)"})
+
 
 if __name__ == '__main__':
     argument_parser = argparse.ArgumentParser(description="Argument parser for training language models' parameters.")

@@ -61,7 +61,8 @@ def train_model(params):
         model,
         training_args,
         train_dataset=tokenized_ds["train"],
-        eval_dataset=tokenized_ds["test"],
+        eval_dataset=None,
+        # eval_dataset=tokenized_ds["test"],
         data_collator=data_collator,
         tokenizer=tokenizer,
     )
